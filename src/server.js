@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import { authorize } from "./middleware/authorize.middleware.js";
+import { authMiddleware } from "./middleware/auth.middleware.js";
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ mongoose
 app.use("/api/v1/auth", authRoutes);
 app.use(
   "/api/v1/admin",
-  authRoutes,
+  authMiddleware,
   authorize("admin", "director"),
   adminRoutes,
 );
