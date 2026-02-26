@@ -2,52 +2,33 @@ import {
   loginService,
   logoutService,
   refreshService,
-  registerService,
 } from "../services/auth.service.js";
-
-/* ---------------- REGISTER ---------------- */
-export const register = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await registerService(email, password);
-
-    return res.status(201).json({
-      message: "User created successfully",
-      user
-    });
-
-  } catch (err) {
-    return res.status(400).json({
-      message: err.message
-    });
-  }
-};
 
 /* ---------------- LOGIN ---------------- */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const { accessToken, refreshToken, user } =
-      await loginService(email, password);
+    const { accessToken, refreshToken, user } = await loginService(
+      email,
+      password,
+    );
 
-    // Set HttpOnly refresh cookie
+    // HttpOnly refresh cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      path: "/"
+      path: "/",
     });
 
     return res.json({
       accessToken,
-      user
+      user, // role included automatically from DB
     });
-
   } catch (err) {
     return res.status(400).json({
-      message: err.message || "Login failed"
+      message: err.message || "Login failed",
     });
   }
 };
@@ -64,20 +45,20 @@ export const refresh = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      path: "/"
+      path: "/",
     });
 
     return res.json({
-      accessToken: newAccessToken
+      accessToken: newAccessToken,
     });
-
   } catch (err) {
     return res.status(403).json({
-      message: "Invalid or expired refresh token"
+      message: "Invalid or expired refresh token",
     });
   }
 };
 
+/* ---------------- LOGOUT ---------------- */
 export const logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -86,15 +67,16 @@ export const logout = async (req, res) => {
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      path: "/"
     });
 
-    return res.json({ message: "Logged out successfully" });
-
+    return res.json({
+      message: "Logged out successfully",
+    });
   } catch (err) {
-    return res.status(500).json({
-      message: "Logout failed"
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Internal Server Error",
     });
   }
 };

@@ -1,85 +1,70 @@
 import { User } from "../models/user.model.js";
-import { comparePassword, hashPassword } from "../utils/hash.js";
+import { ApiError } from "../utils/ApiError.js";
+import { comparePassword } from "../utils/hash.js";
 import {
-    generateAccessToken,
-    generateRefreshToken,
-    verifyRefreshToken,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
 } from "../utils/token.js";
-
-
-export const registerService = async (email, password) => {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) throw new Error("User already exists");
-
-    const hashedPassword = await hashPassword(password);
-
-    const user = await User.create({
-        email,
-        password: hashedPassword
-    });
-
-    return {
-        id: user._id,
-        email: user.email,
-        role: user.role
-    };
-};
 
 /* ---------------- LOGIN SERVICE ---------------- */
 export const loginService = async (email, password) => {
-    const user = await User.findOne({ email });
-    if (!user) throw new Error("Invalid credentials");
+  const user = await User.findOne({ email });
 
-    const isValid = await comparePassword(password, user.password);
-    if (!isValid) throw new Error("Invalid credentials");
+  if (!user) throw new ApiError(401, "Invalid credentials");
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+  if (user.status !== "active") {
+    throw new ApiError(403, "Account is not active");
+  }
 
-    user.refreshToken = refreshToken;
-    await user.save();
+  const isValid = await comparePassword(password, user.password);
 
-    return {
-        accessToken,
-        refreshToken,
-        user: {
-            id: user._id,
-            email: user.email,
-            role: user.role
-        }
-    };
+  if (!isValid) throw new Error("Invalid credentials");
+
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+
+  user.refreshToken = refreshToken;
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    },
+  };
 };
-
 
 /* ---------------- REFRESH SERVICE ---------------- */
 export const refreshService = async (refreshToken) => {
-    if (!refreshToken) throw new Error("Unauthorized");
+  if (!refreshToken) throw new ApiError("401", "Unauthorized");
 
-    const decoded = verifyRefreshToken(refreshToken);
+  const decoded = verifyRefreshToken(refreshToken);
 
-    const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== refreshToken)
-        throw new Error("Forbidden");
+  const user = await User.findById(decoded.id);
 
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
+  if (!user || user.refreshToken !== refreshToken)
+    throw new ApiError("403", "Forbidden");
 
-    user.refreshToken = newRefreshToken;
-    await user.save();
+  const newAccessToken = generateAccessToken(user);
+  const newRefreshToken = generateRefreshToken(user);
 
-    return {
-        newAccessToken,
-        newRefreshToken
-    };
+  user.refreshToken = newRefreshToken;
+  await user.save();
+
+  return {
+    newAccessToken,
+    newRefreshToken,
+  };
 };
-
 
 /* ---------------- LOGOUT SERVICE ---------------- */
 export const logoutService = async (refreshToken) => {
-    if (!refreshToken) return;
+  if (!refreshToken) return;
 
-    await User.updateOne(
-        { refreshToken },
-        { $set: { refreshToken: null } }
-    );
+  await User.updateOne({ refreshToken }, { $set: { refreshToken: null } });
 };
