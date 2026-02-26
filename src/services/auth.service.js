@@ -19,7 +19,7 @@ export const loginService = async (email, password) => {
 
   const isValid = await comparePassword(password, user.password);
 
-  if (!isValid) throw new Error("Invalid credentials");
+  if (!isValid) throw new ApiError(401, "Invalid credentials");
 
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
@@ -42,14 +42,14 @@ export const loginService = async (email, password) => {
 
 /* ---------------- REFRESH SERVICE ---------------- */
 export const refreshService = async (refreshToken) => {
-  if (!refreshToken) throw new ApiError("401", "Unauthorized");
+  if (!refreshToken) throw new ApiError(401, "Unauthorized");
 
   const decoded = verifyRefreshToken(refreshToken);
 
   const user = await User.findById(decoded.id);
 
   if (!user || user.refreshToken !== refreshToken)
-    throw new ApiError("403", "Forbidden");
+    throw new ApiError(403, "Forbidden");
 
   const newAccessToken = generateAccessToken(user);
   const newRefreshToken = generateRefreshToken(user);

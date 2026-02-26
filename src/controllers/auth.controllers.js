@@ -18,7 +18,7 @@ export const login = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
     });
 
@@ -27,7 +27,7 @@ export const login = async (req, res) => {
       user, // role included automatically from DB
     });
   } catch (err) {
-    return res.status(400).json({
+    return res.status(err.statusCode || 400).json({
       message: err.message || "Login failed",
     });
   }
@@ -44,7 +44,7 @@ export const refresh = async (req, res) => {
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
     });
 
@@ -52,8 +52,8 @@ export const refresh = async (req, res) => {
       accessToken: newAccessToken,
     });
   } catch (err) {
-    return res.status(403).json({
-      message: "Invalid or expired refresh token",
+    return res.status(err.statusCode || 403).json({
+      message: err.message || "Invalid or expired refresh token",
     });
   }
 };
@@ -68,7 +68,7 @@ export const logout = async (req, res) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     });
 
     return res.json({
