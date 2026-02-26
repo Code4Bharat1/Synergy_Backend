@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import { authorize } from "./middleware/authorize.middleware.js";
 
 dotenv.config();
 
@@ -15,8 +17,8 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: "http://localhost:3000",
-    credentials: true
-  })
+    credentials: true,
+  }),
 );
 
 mongoose
@@ -24,8 +26,14 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error(err));
 
-app.use("/api/auth", authRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use(
+  "/api/v1/admin",
+  authRoutes,
+  authorize("admin", "director"),
+  adminRoutes,
+);
 
 app.listen(process.env.PORT, () =>
-  console.log(`Server running on port ${process.env.PORT}`)
+  console.log(`Server running on port ${process.env.PORT}`),
 );
